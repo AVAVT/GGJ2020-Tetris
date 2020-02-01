@@ -30,7 +30,7 @@ public class BlockController : MonoBehaviour
       var newLocalTransform = square.GetRotatePos();
       if (!PlaySceneManager.Instance.IsPositionValid(newLocalTransform + transform.position)) return;
     }
-
+    AudioSource.PlayClipAtPoint(PlaySceneManager.Instance.moveSound, Camera.main.transform.position, 1);
     foreach (var square in children) square.Rotate();
   }
 
@@ -40,6 +40,7 @@ public class BlockController : MonoBehaviour
     {
       if (!PlaySceneManager.Instance.IsPositionValid(square.transform.position + Vector3.left)) return;
     }
+    AudioSource.PlayClipAtPoint(PlaySceneManager.Instance.moveSound, Camera.main.transform.position, 1);
     transform.position += Vector3.left;
   }
 
@@ -49,6 +50,7 @@ public class BlockController : MonoBehaviour
     {
       if (!PlaySceneManager.Instance.IsPositionValid(square.transform.position + Vector3.right)) return;
     }
+    AudioSource.PlayClipAtPoint(PlaySceneManager.Instance.moveSound, Camera.main.transform.position, 1);
     transform.position += Vector3.right;
   }
 

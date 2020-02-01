@@ -18,7 +18,8 @@ public class EndSquareController : SquareController
 
     if (newValue)
     {
-      PlaySceneManager.Instance.Win();
+      ActivateNextSquare();
+      PlaySceneManager.Instance.CheckWin();
     }
   }
 }

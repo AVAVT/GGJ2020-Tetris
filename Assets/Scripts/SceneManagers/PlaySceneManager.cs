@@ -1,18 +1,29 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlaySceneManager : MonoBehaviour
 {
   public static PlaySceneManager Instance { get; private set; }
+  public string levelName;
+  public TMPro.TMP_Text levelText;
   public BlockController[] prefabs;
-  public SquareController root;
+  public List<SquareController> roots;
+  public EndSquareController[] targets;
+  public string nextScene;
   Dictionary<int, SquareController> staticBlocks = new Dictionary<int, SquareController>();
   List<BlockController> nextBlocks = new List<BlockController>();
   public Transform[] previewPositions;
+  public SpriteRenderer[] destroyLights;
+  public AudioClip moveSound;
+  public AudioClip lockSound;
+  public AudioClip clearSound;
   BlockController currentBlock;
-  bool acceptUserInput = true;
-  bool gameOver = false;
+  bool acceptUserInput = false;
+  bool shouldShowGameOver = false;
+  bool isWin = false;
+  int destroyCount = 5;
 
   private void Awake()
   {
@@ -23,18 +34,51 @@ public class PlaySceneManager : MonoBehaviour
   {
     PrepareNextBlock();
     PrepareNextBlock();
+    StartCoroutine(StartGame());
+  }
+
+  IEnumerator StartGame()
+  {
+    levelText.text = levelName;
+    yield return new WaitForSeconds(2);
+    levelText.text = "";
+    acceptUserInput = true;
     SpawnNextBlock();
   }
 
   private void Update()
   {
+    if (shouldShowGameOver)
+    {
+      if (isWin) StartCoroutine(ToNextLevel());
+      else levelText.text = "Game Over\nPress Escape to replay";
+      shouldShowGameOver = false;
+      return;
+    }
+    if (Input.GetKeyDown(KeyCode.Escape)) SceneManager.LoadScene("Level1");
     if (!acceptUserInput) return;
 
     if (Input.GetKeyDown(KeyCode.LeftArrow)) currentBlock.MoveLeft();
-    if (Input.GetKeyDown(KeyCode.RightArrow)) currentBlock.MoveRight();
-    if (Input.GetKeyDown(KeyCode.DownArrow)) currentBlock.MoveDown();
-    if (Input.GetKeyDown(KeyCode.UpArrow)) currentBlock.Drop();
-    if (Input.GetKeyDown(KeyCode.Space)) currentBlock.Rotate();
+    else if (Input.GetKeyDown(KeyCode.RightArrow)) currentBlock.MoveRight();
+    else if (Input.GetKeyDown(KeyCode.DownArrow)) currentBlock.MoveDown();
+    else if (Input.GetKeyDown(KeyCode.UpArrow)) currentBlock.Drop();
+
+    else if (Input.GetKeyDown(KeyCode.Space)) currentBlock.Rotate();
+    else if (Input.GetKeyDown(KeyCode.LeftShift)) DestroyCurrentBlock();
+  }
+
+  IEnumerator ToNextLevel()
+  {
+    if (!string.IsNullOrEmpty(nextScene))
+    {
+      levelText.text = "You win!!";
+      yield return new WaitForSeconds(2);
+      SceneManager.LoadScene(nextScene);
+    }
+    else
+    {
+      levelText.text = "CONGRATULATION YOU WON THE GAME!!";
+    }
   }
 
   public void OnBlockTouchedGround()
@@ -46,7 +90,7 @@ public class PlaySceneManager : MonoBehaviour
       bool lineCleared = true;
       for (int x = -4; x < 6; x++)
       {
-        if (!staticBlocks.ContainsKey(12 * y + x))
+        if (!staticBlocks.ContainsKey(12 * y + x) || !staticBlocks[12 * y + x].isBlocker)
         {
           lineCleared = false;
           continue;
@@ -57,6 +101,8 @@ public class PlaySceneManager : MonoBehaviour
       if (startLine == -9999) startLine = y;
       endLine = y;
     }
+
+    AudioSource.PlayClipAtPoint(lockSound, Camera.main.transform.position, 1);
 
     if (startLine == -9999) SpawnNextBlock();
     else StartCoroutine(AnimateDestroy(startLine, endLine + 1));
@@ -76,13 +122,15 @@ public class PlaySceneManager : MonoBehaviour
 
     yield return new WaitForSeconds(0.3f);
 
+    AudioSource.PlayClipAtPoint(clearSound, Camera.main.transform.position, 1);
+
     var diff = end - start;
-    for (int y = end; y < 10; y++)
+    for (int y = end; y < 14; y++)
     {
       for (int x = -4; x < 6; x++)
       {
         var index = 12 * y + x;
-        if (staticBlocks.ContainsKey(index))
+        if (staticBlocks.ContainsKey(index) && staticBlocks[index].isBlocker)
         {
           var block = staticBlocks[index];
           staticBlocks.Remove(index);
@@ -92,6 +140,18 @@ public class PlaySceneManager : MonoBehaviour
       }
     }
     acceptUserInput = true;
+    SpawnNextBlock();
+  }
+
+  void DestroyCurrentBlock()
+  {
+    if (destroyCount <= 0) return;
+    destroyCount--;
+    for (int i = 0; i < 5; i++)
+    {
+      destroyLights[i].color = i < destroyCount ? Color.red : Color.gray;
+    }
+    GameObject.Destroy(currentBlock.gameObject);
     SpawnNextBlock();
   }
 
@@ -105,8 +165,8 @@ public class PlaySceneManager : MonoBehaviour
 
   public void SpawnNextBlock()
   {
-    root.ActivateNextSquare();
-    if (gameOver) return;
+    roots.ForEach(root => root.ActivateNextSquare());
+    if (shouldShowGameOver) return;
 
     currentBlock = nextBlocks[0];
     currentBlock.falling = true;
@@ -145,12 +205,13 @@ public class PlaySceneManager : MonoBehaviour
     try
     {
       var gridIndex = TransformToGridIndex(block.transform.position);
-      staticBlocks.Add(gridIndex, block);
       block.transform.SetParent(transform);
-      if (gridIndex >= 9 * 12 - 4) GameOver();
+      staticBlocks.Add(gridIndex, block);
+      if (gridIndex >= 12 * 12 - 4) GameOver();
     }
     catch
     {
+      GameObject.Destroy(block.gameObject);
       GameOver();
     }
   }
@@ -161,15 +222,19 @@ public class PlaySceneManager : MonoBehaviour
   }
   void GameOver()
   {
-    gameOver = true;
+    shouldShowGameOver = true;
     acceptUserInput = false;
-    Debug.Log("Game Over");
   }
 
-  public void Win()
+  public void CheckWin()
   {
-    gameOver = true;
+    foreach (var square in targets)
+    {
+      if (!square.isActive) return;
+    }
+
+    shouldShowGameOver = true;
+    isWin = true;
     acceptUserInput = false;
-    Debug.Log("Yay!!");
   }
 }

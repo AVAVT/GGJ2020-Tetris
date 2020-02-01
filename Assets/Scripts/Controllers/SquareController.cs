@@ -19,6 +19,16 @@ public class SquareController : MonoBehaviour
   public SquareController prev;
   public bool isBlocker = true;
 
+  private void Update()
+  {
+    if (!isActive) return;
+
+    foreach (var cable in cables)
+    {
+      cable.color = ((int)(Time.timeSinceLevelLoad * 4) % 2 == 0) ? Color.yellow : Color.cyan;
+    }
+  }
+
   public Vector3 GetRotatePos()
   {
     return new Vector3(
@@ -38,7 +48,6 @@ public class SquareController : MonoBehaviour
 
     if (newValue)
     {
-      PlaySceneManager.Instance.root = this;
       ActivateNextSquare();
     }
     else
@@ -48,11 +57,6 @@ public class SquareController : MonoBehaviour
         next.prev = null;
         next.SetActivated(false);
         this.next = null;
-      }
-
-      if (prev != null)
-      {
-        PlaySceneManager.Instance.root = prev;
       }
     }
   }
@@ -82,7 +86,7 @@ public class SquareController : MonoBehaviour
     var thisIndex = PlaySceneManager.Instance.TransformToGridIndex(transform.position);
     var target = PlaySceneManager.Instance.GetStaticSquareAt(targetIndex);
     if (target == null) return;
-    if (target.isActive) return;
+    if (target.next == this) return;
     if (target.GetOutIndexes().Contains(thisIndex))
     {
       target.prev = this;
