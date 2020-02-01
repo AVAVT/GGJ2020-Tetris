@@ -7,7 +7,8 @@ public class PlaySceneManager : MonoBehaviour
 {
   public static PlaySceneManager Instance { get; private set; }
   public string levelName;
-  public TMPro.TMP_Text levelText;
+  public TMPro.TMP_Text notificationText;
+  public TMPro.TMP_Text tutorialText;
   public BlockController[] prefabs;
   public List<SquareController> roots;
   public EndSquareController[] targets;
@@ -35,13 +36,12 @@ public class PlaySceneManager : MonoBehaviour
     PrepareNextBlock();
     PrepareNextBlock();
     StartCoroutine(StartGame());
+    tutorialText.text = $"L,R,D: Move\nUp: Drop\nSpace: Rotate\nShift: Destroy ({destroyCount.ToString()})";
   }
 
   IEnumerator StartGame()
   {
-    levelText.text = levelName;
     yield return new WaitForSeconds(2);
-    levelText.text = "";
     acceptUserInput = true;
     SpawnNextBlock();
   }
@@ -51,7 +51,11 @@ public class PlaySceneManager : MonoBehaviour
     if (shouldShowGameOver)
     {
       if (isWin) StartCoroutine(ToNextLevel());
-      else levelText.text = "Game Over\nPress Escape to replay";
+      else
+      {
+        notificationText.text = "Game Over\nPress Escape to replay";
+        notificationText.transform.parent.gameObject.SetActive(true);
+      }
       shouldShowGameOver = false;
       return;
     }
@@ -71,13 +75,15 @@ public class PlaySceneManager : MonoBehaviour
   {
     if (!string.IsNullOrEmpty(nextScene))
     {
-      levelText.text = "You win!!";
+      notificationText.text = "You win!!";
+      notificationText.transform.parent.gameObject.SetActive(true);
       yield return new WaitForSeconds(2);
       SceneManager.LoadScene(nextScene);
     }
     else
     {
-      levelText.text = "CONGRATULATION YOU WON THE GAME!!";
+      notificationText.text = "CONGRATULATION YOU WON THE GAME!!";
+      notificationText.transform.parent.gameObject.SetActive(true);
     }
   }
 
@@ -116,7 +122,7 @@ public class PlaySceneManager : MonoBehaviour
     {
       for (int x = -4; x < 6; x++)
       {
-        staticBlocks[12 * y + x].Clear();
+        if (staticBlocks.ContainsKey(12 * y + x)) staticBlocks[12 * y + x].Clear();
       }
     }
 
@@ -147,6 +153,7 @@ public class PlaySceneManager : MonoBehaviour
   {
     if (destroyCount <= 0) return;
     destroyCount--;
+    tutorialText.text = $"L,R,D: Move\nUp: Drop\nSpace: Rotate\nShift: Destroy ({destroyCount.ToString()})";
     for (int i = 0; i < 5; i++)
     {
       destroyLights[i].color = i < destroyCount ? Color.red : Color.gray;
