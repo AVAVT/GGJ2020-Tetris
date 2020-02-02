@@ -25,6 +25,7 @@ public class PlaySceneManager : MonoBehaviour
   bool shouldShowGameOver = false;
   bool isWin = false;
   int destroyCount = 5;
+  float tickTimer = 0.2f;
 
   private void Awake()
   {
@@ -60,6 +61,7 @@ public class PlaySceneManager : MonoBehaviour
       return;
     }
     if (Input.GetKeyDown(KeyCode.Escape)) SceneManager.LoadScene("Level1");
+    if (Input.GetKeyUp(KeyCode.LeftArrow) || Input.GetKeyUp(KeyCode.DownArrow) || Input.GetKeyUp(KeyCode.RightArrow)) tickTimer = 0.2f;
     if (!acceptUserInput) return;
 
     if (Input.GetKeyDown(KeyCode.LeftArrow)) currentBlock.MoveLeft();
@@ -69,6 +71,19 @@ public class PlaySceneManager : MonoBehaviour
 
     else if (Input.GetKeyDown(KeyCode.Space)) currentBlock.Rotate();
     else if (Input.GetKeyDown(KeyCode.LeftShift)) DestroyCurrentBlock();
+
+    if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.RightArrow))
+    {
+      tickTimer -= Time.deltaTime;
+    }
+
+    if (tickTimer < 0)
+    {
+      if (Input.GetKey(KeyCode.LeftArrow)) currentBlock.MoveLeft();
+      if (Input.GetKey(KeyCode.RightArrow)) currentBlock.MoveRight();
+      if (Input.GetKey(KeyCode.DownArrow)) currentBlock.MoveDown();
+      tickTimer = 0.05f;
+    }
   }
 
   IEnumerator ToNextLevel()
